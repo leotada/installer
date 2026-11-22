@@ -283,16 +283,20 @@ do
 		# derive shared library package name from SO_VERSION (e.g. libphobos2-0_113)
 		PHOBOS_LIB_PKG="libphobos2-$(echo $SO_VERSION | tr . _)"
 		PROVIDES_EXTRA=", phobos-devel = $VERSION-$REVISION, phobos-devel($FARCH) = $VERSION-$REVISION, phobos-devel-static = $VERSION-$REVISION, phobos-devel-static($FARCH) = $VERSION-$REVISION, $PHOBOS_LIB_PKG = $VERSION-$REVISION, $PHOBOS_LIB_PKG($FARCH) = $VERSION-$REVISION"
-		OBSOLETES_EXTRA="Obsoletes: phobos-devel <= $VERSION-$REVISION, phobos-devel-static <= $VERSION-$REVISION, $PHOBOS_LIB_PKG <= $VERSION-$REVISION"
+		# unversioned: the distro package may be newer, or have a higher release
+		OBSOLETES_EXTRA="Obsoletes: phobos-devel, phobos-devel-static, $PHOBOS_LIB_PKG"
 
 		if test -x usr/bin/dub ; then
-			DUB_VER=$(./usr/bin/dub --version 2>/dev/null | awk '{print $3}' | tr -d ',' || true)
+			# accept only "DUB version X.Y.Z..."; anything else falls back to an unversioned Provides
+			DUB_VER=$(./usr/bin/dub --version 2>/dev/null \
+				| sed -n 's/^DUB version \([0-9][0-9]*\(\.[0-9][0-9]*\)*\)[-+,~ ].*$/\1/p' | head -n 1 || true)
 			if test -n "$DUB_VER" ; then
-				PROVIDES_EXTRA="$PROVIDES_EXTRA, dub = $DUB_VER-$REVISION, dub($FARCH) = $DUB_VER-$REVISION"
-				OBSOLETES_EXTRA="$OBSOLETES_EXTRA, dub <= $DUB_VER-$REVISION"
+				PROVIDES_EXTRA="$PROVIDES_EXTRA, dub = $DUB_VER, dub($FARCH) = $DUB_VER"
 			else
 				PROVIDES_EXTRA="$PROVIDES_EXTRA, dub, dub($FARCH)"
 			fi
+			# always obsolete the distro dub, even when its version is newer or unknown
+			OBSOLETES_EXTRA="$OBSOLETES_EXTRA, dub"
 		fi
 
 		# exclude bundled 32-bit phobos from generating 32-bit requirements on 64-bit packages
